@@ -1,3 +1,4 @@
+-- Building out database --
 DROP DATABASE IF EXISTS employee_tracker_db;
 CREATE DATABASE employee_tracker_db;
 
@@ -33,3 +34,5 @@ CREATE TABLE employee (
   FOREIGN KEY (manager_id)
   REFERENCES employee(id)
 );
+
+-- SOURCE seed.sql; --
