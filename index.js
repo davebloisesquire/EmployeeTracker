@@ -5,6 +5,7 @@ const cTable = require('console.table');
 // Internal Dependencies
 const db = require('./configs/connection.js');
 
+// This brings up the main menu to choose what operation the user would like to perform
 function startMenu() {
   inq.prompt([{
     type: 'list',
@@ -43,14 +44,20 @@ function startMenu() {
   })
 };
 
+// - - - These Are All the Operations that can be performed by the apllication - - - //
+// Allows the user to view all employees
 function viewAllEmployees() {
+  // Queries a list of all the employees in the database and joins them to their roles and departments and managers
   db.query('SELECT e.first_name, e.last_name, role.title, role.salary, department.name AS department, m.first_name AS manager FROM employee AS e JOIN role ON e.role_id=role.id JOIN department ON role.department_id=department.id LEFT JOIN employee AS m ON e.manager_id=m.id;', function(err, results) {
+    //displays results as a table in the console
     const dataTable = cTable.getTable(results);
     console.log("\n" + dataTable);
   });
+  //initializes the start menu once operation is complete
   startMenu();
 }
 
+// Allows the user to view all roles within the database
 function viewAllRoles() {
   db.query('SELECT role.title, role.id, department.name as department, role.salary FROM role JOIN department ON role.department_id=department.id', function(err, results) {
     const dataTable = cTable.getTable(results);
@@ -59,6 +66,7 @@ function viewAllRoles() {
   startMenu();
 }
 
+// Allows the user to view all departments within the database
 function viewAllDepartments() {
   db.query('SELECT * FROM department', function(err, results) {
     const dataTable = cTable.getTable(results);
@@ -67,6 +75,7 @@ function viewAllDepartments() {
   startMenu();
 }
 
+// Allows the user to add a new employee to the database and assign them a role and a manager
 function addEmployee() {
   let managerObj;
   let roleObj;
@@ -79,8 +88,9 @@ function addEmployee() {
       roleOptions.push(results[i].title);
     }
   });
+  console.log(roleOptions);
 
-  db.query('SELECT id, first_name FROM employee WHERE role_id=2', function(err, results) {
+  db.query('SELECT id, first_name FROM employee WHERE role_id=1', function(err, results) {
     managerObj = results;
     for (var i = 0; i < results.length; i++) {
       managerOptions.push(results[i].first_name);
@@ -127,14 +137,108 @@ function addEmployee() {
   })
 };
 
+// Allows the user to change an employees existing role
 function updateEmployeeRole() {
+  const employeeObj = [];
+  var roleObj;
+  const roleOptions = [];
+  const employeeOptions = [];
 
+  db.query('SELECT id, first_name, last_name FROM employee;', function(err, results) {
+    results.forEach(employee => {
+      let fullName = employee.first_name + " " + employee.last_name;
+      let newEmployeeObj = {};
+      newEmployeeObj.id = employee.id;
+      newEmployeeObj.fullName = fullName;
+      employeeObj.push(newEmployeeObj);
+      employeeOptions.push(fullName);
+    });
+
+    db.query('SELECT id, title FROM role;', function(err, results) {
+      roleObj = results;
+      for (var i = 0; i < results.length; i++) {
+        roleOptions.push(results[i].title);
+      }
+    });
+
+    inq.prompt([{
+        type: 'list',
+        message: 'Employee',
+        name: 'employeeManager',
+        choices: employeeOptions
+      },
+      {
+        type: 'list',
+        message: 'Employee Role',
+        name: 'employeeRole',
+        choices: roleOptions
+      },
+    ]).then(response => {
+      const roleId = roleObj.find(({title}) => title === response.employeeRole).id;
+      const employeeId = employeeObj.find(({fullName}) => fullName === response.employeeManager).id;
+      db.query('UPDATE employee SET role_id=? WHERE id=?', [roleId, employeeId], function(err, results) {
+        if (err) throw err;
+        console.log("Updated  ");
+        startMenu();
+      });
+
+    });
+  });
 };
 
+// Allows the user to change an employees current manager
 function updateEmployeeManager() {
+  const employeeObj = [];
+  var managerObj;
+  const managerOptions = [];
+  const employeeOptions = [];
 
+  db.query('SELECT id, first_name, last_name FROM employee;', function(err, results) {
+    results.forEach(employee => {
+      let fullName = employee.first_name + " " + employee.last_name;
+      let newEmployeeObj = {};
+      newEmployeeObj.id = employee.id;
+      newEmployeeObj.fullName = fullName;
+      employeeObj.push(newEmployeeObj);
+      employeeOptions.push(fullName);
+    });
+
+    db.query('SELECT id, first_name FROM employee WHERE role_id=1', function(err, results) {
+      managerObj = results;
+      for (var i = 0; i < results.length; i++) {
+        managerOptions.push(results[i].first_name);
+      }
+    });
+
+    inq.prompt([{
+        type: 'list',
+        message: 'Employee',
+        name: 'employeeUpdate',
+        choices: employeeOptions
+      },
+      {
+        type: 'list',
+        message: 'Employee Manager',
+        name: 'employeeManager',
+        choices: managerOptions
+      },
+    ]).then(response => {
+      let managerId = null;
+      if (response.employeeManager !== 'None') {
+        managerId = managerObj.find(({first_name}) => first_name === response.employeeManager).id;
+      }
+      const employeeId = employeeObj.find(({fullName}) => fullName === response.employeeUpdate).id;
+      db.query('UPDATE employee SET manager_id=? WHERE id=?', [managerId, employeeId], function(err, results) {
+        if (err) throw err;
+        console.log("Updated  ");
+        startMenu();
+      });
+
+    });
+  });
 };
 
+// Allows the user to add a new role and assign it to a department in the database
 function addRole() {
   let deptObj;
   let deptOptions = [];
@@ -174,6 +278,7 @@ function addRole() {
   })
 };
 
+// Allows teh user to create a new department in teh database
 function addDepartment() {
   inq.prompt([{
     type: 'input',
@@ -188,4 +293,5 @@ function addDepartment() {
   })
 };
 
+// Initializes the start menu
 startMenu();
